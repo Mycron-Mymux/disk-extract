@@ -15,32 +15,13 @@ import argparse
 import zipfile
 import pathlib
 import image_common
-from image_common import split_disk
+from image_common import split_disk, split_sect, add_sects, extract_ascii
+from image_common import File, Archive
 
 # The first generations of Mycron computers used Single Side Single Density diskettes.
 TRACKS=77        # tracks are numbered 0..76
 SECTORS=26       # sectors are numbered 1..26
 SECTOR_SIZE=128
-
-
-def split_sect(sect, psize):
-    parts = []
-    for offset in range(0, len(sect), psize):
-        parts.append(sect[offset:offset+psize])
-    return parts
-
-
-def add_sects(track, sect, nsect):
-    """add sectors to address starting at track and sect, returning track,sect or
-    result"""
-    # TODO: I'm just tired now, and I can't use modulo here - at least not without thinking.
-    # The solution is probably to reduce sect with 1 to work with base 0 and then just add 1 to the result
-    for _ in range(nsect):
-        sect += 1
-        if sect > SECTORS:
-            sect = 1
-            track += 1
-    return track, sect
 
 
 # program entry, 16 bytes
@@ -80,29 +61,13 @@ class ProgEntry:
         # s += str(self.ebytes)
         return s
 
-    def add_to_zip(self, zfile):
-        zfile.writestr(f"{self.name}.info", str(self))
+    def files(self):
+        yield File(f"{self.name}.meta", bytes(str(self), encoding="ascii"))
         if len(self.seg1) > 0:
-            zfile.writestr(f"{self.name}.seg1.bin", self.seg1)
+            yield File(f"{self.name}.seg1.bin", self.seg1)
         if len(self.seg2) > 0:
-            zfile.writestr(f"{self.name}.seg2.bin", self.seg2)
+            yield File(f"{self.name}.seg2.bin", self.seg2)
 
-    def add_to_dir(self, dpath):
-
-        if '/' in self.name:
-            base = dpath / self.name.split("/")[0]
-            print(f"WARNING: '/' in filename {self.name} - creating subdir {base}")
-            # NB: filenames can have a / in them.
-            base.mkdir(exist_ok=True)
-        
-        with open(dpath / f"{self.name}.info", 'w') as f:
-            f.write(str(self))
-        if len(self.seg1) > 0:
-            with open(dpath / f"{self.name}.seg1.bin", 'wb') as f:
-                f.write(self.seg1)
-        if len(self.seg2) > 0:
-            with open(dpath / f"{self.name}.seg2.bin", 'wb') as f:
-                f.write(self.seg2)
 
 # positions starting with 1 (not 0) in the docs
 # see page 6-38 for more details
@@ -183,37 +148,21 @@ class DataEntry:
         assert n_eof <= 1
         return rf.split(b'\000')[0]
 
-    def add_to_zip(self, zfile, dump_raw=True):
+    def files(self, dump_raw=True):
         if dump_raw:
             data = self.raw_file_to_eof()
         else:
             data = self.ascii_file()
-        zfile.writestr(self.name, data)
-
-    def add_to_dir(self, dpath, dump_raw=True):
-        if dump_raw:
-            data = self.raw_file_to_eof()
-        else:
-            data = bytes(self.ascii_file())
-        with open(dpath / self.name, 'wb') as f:
-            f.write(data)
+        yield File(self.name, data)
 
     def __str__(self):
         s = f"DataEntry({self.name:8}, len {len(self.ascii_file()):7}, start {self.start_track:02}.{self.start_sect:02})"
         return s
 
 
-def extract_ascii(sect, start, stop):
-    part = sect[start:stop]
-    try:
-        return part.decode('ASCII')
-    except UnicodeDecodeError:
-        print(f"Couldn't decode {start}:{stop} = '{part}' from {sect}")
-        raise
-
-
 class MycronDiskette:
     def __init__(self, fname):
+        self.fname = fname
         self.data = open(fname, 'rb').read()
         self.disk = split_disk(self.data)
         self._scan_volume_id()
@@ -272,14 +221,14 @@ class MycronDiskette:
                     pl.append(pe)
         return pl
 
-    def add_files(self, zfile):
-        for file in self.files:
-            file.add_to_zip(zfile)
+    def get_archive(self):
+        # TODO: add a .meta file for the archive?
+        archive = Archive(self.fname)
+        for entry in self.files:
+            for file in entry.files():
+                archive.add_file(file)
+        return archive
 
-    def dir_add_files(self, dpath):
-        for file in self.files:
-            file.add_to_dir(dpath)
-        
     def get_sectors(self, start_track, start_sector, end_track, end_sector):
         """Returns the sectors from (including) start track/sector up to (but not including) end track and sector.
         Returned as a dict with key = (trk,sect)
@@ -315,16 +264,13 @@ def main():
     if args.zip:
         zip_fname = args.zip[0]
         print("Adding to zip file", zip_fname)
-        with zipfile.ZipFile(zip_fname, 'w') as ziptarg:
-            disk.add_files(ziptarg)
+        arch = disk.get_archive()
+        arch.write_to_zip(zip_fname)
 
     if args.dir:
-        dpath = pathlib.Path(args.dir[0])
-        if not dpath.exists() or not dpath.is_dir():
-            print("Can't dump to nonexisting directory", dpath)
-        else:
-            print("Extracting to directory", dpath)
-            disk.dir_add_files(dpath)
+        dpath = args.dir[0]
+        arch = disk.get_archive()
+        arch.write_to_dir(dpath)
 
 
 if __name__ == '__main__':
