@@ -56,8 +56,8 @@ class ProgEntry:
 
     def __str__(self):
         s = f"ProgEntry({self.name:8}, t/s0={self.track0:2}.{self.sec0:2}, "
-        s += f"seg 1 at {self.seg1addr:#6x} sz {self.seg1sz:#6x} len {len(self.seg1):#4x}, "
-        s += f"seg 2 at {self.seg2addr:#6x} sz {self.seg2sz:#6x} len {len(self.seg2):#4x}) "
+        s += f"seg 1 at {self.seg1addr:#6x} sz {self.seg1sz:#6x} len {len(self.seg1):#6x}, "
+        s += f"seg 2 at {self.seg2addr:#6x} sz {self.seg2sz:#6x} len {len(self.seg2):#6x}) "
         # s += str(self.ebytes)
         return s
 
@@ -221,9 +221,14 @@ class MycronDiskette:
                     pl.append(pe)
         return pl
 
+    def get_metainf(self):
+        s = f"{self.fname}\n"
+        return s + "\n".join([str(f) for f in self.files])
+
     def get_archive(self):
         # TODO: add a .meta file for the archive?
         archive = Archive(self.fname)
+        archive.add_file(File(".meta", self.get_metainf().encode("ascii")))
         for entry in self.files:
             for file in entry.files():
                 archive.add_file(file)
