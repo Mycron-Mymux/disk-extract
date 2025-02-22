@@ -89,7 +89,7 @@ class Archive:
         self.files[file.path] = file
 
     def write_to_zip(self, fname):
-        print("Extracting to zip file:", fname)
+        print("Storing in zip file:", fname)
         with zipfile.ZipFile(fname, 'w') as zfile:
             for file in self.files.values():
                 print(" - ", file.path)

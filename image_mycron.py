@@ -11,9 +11,6 @@ TODO:
 
 """
 import struct
-import argparse
-import zipfile
-import pathlib
 import image_common
 from image_common import split_disk, split_sect, add_sects, extract_ascii
 from image_common import File, Archive
@@ -252,34 +249,6 @@ class MycronDiskette:
                 sct = 1
         return sectors
 
-
-def main():
-    parser = argparse.ArgumentParser(
-        prog="Mycron Diskette Dumper",
-        description="Displays info about a diskette image. Optionally extracts files and puts them in a zip file.",
-        epilog="check this (TODO)")
-
-    parser.add_argument('filename')
-    parser.add_argument('--zip', nargs=1, help="zip file to store extracted files in")
-    parser.add_argument('--dir', nargs=1, help="directory to extract files into")
-    args = parser.parse_args()
-
-
-    disk = MycronDiskette(args.filename)
-    if args.zip:
-        zip_fname = args.zip[0]
-        print("Adding to zip file", zip_fname)
-        arch = disk.get_archive()
-        arch.write_to_zip(zip_fname)
-
-    if args.dir:
-        dpath = args.dir[0]
-        arch = disk.get_archive()
-        arch.write_to_dir(dpath)
-
-
-if __name__ == '__main__':
-    main()
 
 
 
