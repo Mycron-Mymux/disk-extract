@@ -8,6 +8,7 @@ TODO:
 
 import argparse
 import struct
+import imd_common
 
 
 def bit_set(val, bit_no):
@@ -134,7 +135,11 @@ class NDImage:
     
     def __init__(self, fname):
         self.fname = fname
+        # TODO: should perhaps check a bit more robustly for IMD files.
         self.data = open(fname, 'rb').read()
+        if self.data[:4] == b'IMD ':
+            im = imd_common.read_imd(fname)
+            self.data = imd_common.get_full_img_ss(im)
         self._extract_hdr()
 
     def get_page(self, pno):
@@ -187,15 +192,16 @@ class NDImage:
             self._obj_file_pg(ptr)
 
 
-ap = argparse.ArgumentParser()
-ap.add_argument("-hex", action="store_true")
-ap.add_argument("-t0raw", nargs=1)
-ap.add_argument("fname", default="nd01.imd")
-ap.add_argument("-v", action="store_true")
-args = ap.parse_args()
-print(args)
+if __name__ == '__main__':
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-hex", action="store_true")
+    ap.add_argument("-t0raw", nargs=1)
+    ap.add_argument("fname", default="nd01.imd")
+    ap.add_argument("-v", action="store_true")
+    args = ap.parse_args()
+    print(args)
 
-img = NDImage(args.fname)
-img.print_hdr()
-img.obj_file()
+    img = NDImage(args.fname)
+    img.print_hdr()
+    img.obj_file()
 

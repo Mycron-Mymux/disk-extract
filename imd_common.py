@@ -38,6 +38,16 @@ def get_tracks_skipping_dup_heads(im):
             yield (tno, hno, td)
 
 
+def get_full_img_ss(im):
+    img_data = b''
+    for tno, no, tdata in get_tracks_skipping_dup_heads(im):
+        for sec, sdr in enumerate(tdata.sector_data_records, start=1):
+            data = sdr.data
+            if len(data) == 1:
+                data = data * tdata.sector_size
+            img_data += data
+    return img_data
+
 
 def hexdump_data(data):
     print("     0  1  2  3  4  5  6  7   8  9  a  b  c  d  e  f    012345678 9abcdef")

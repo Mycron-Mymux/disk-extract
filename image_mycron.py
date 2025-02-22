@@ -47,9 +47,6 @@ class ProgEntry:
         self.sects2 = disk.get_sectors(et1, es1, et2, es2)
         self.seg1 = b''.join(self.sects1.values())
         self.seg2 = b''.join(self.sects2.values())
-        if self.valid and 0:
-            print('seg1', self.sects1.keys())
-            print('seg2', self.sects2.keys())
 
     def __str__(self):
         s = f"ProgEntry({self.name:8}, t/s0={self.track0:2}.{self.sec0:2}, "
@@ -201,7 +198,7 @@ class MycronDiskette:
             if not DataEntry.verify_data_entry(sect):
                 continue
             entry = DataEntry(sect, self)
-            print(entry)
+            # print(entry)
             dl.append(entry)
         return dl
 
@@ -214,7 +211,7 @@ class MycronDiskette:
             for rpe in entries:
                 pe = ProgEntry(rpe, self)
                 if pe.valid:
-                    print(pe)
+                    # print(pe)
                     pl.append(pe)
         return pl
 

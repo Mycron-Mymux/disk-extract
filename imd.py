@@ -1,1 +1,1 @@
-../parse-imd/python-imd/imd.py
+python-imd/imd.py

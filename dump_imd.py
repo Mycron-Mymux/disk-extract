@@ -36,6 +36,7 @@ def store_tracks(im, out_fname):
             for sec, sdr in enumerate(tdata.sector_data_records, start=1):
                 data = sdr.data
                 if len(data) == 1:
+                    # Expand compressed sector
                     data = data * tdata.sector_size
                 out.write(data)
                 nsects += 1

@@ -27,7 +27,6 @@ def main():
         
     if args.zip:
         zip_fname = args.zip[0]
-        print("Adding to zip file", zip_fname)
         arch = disk.get_archive()
         arch.write_to_zip(zip_fname)
 
@@ -37,7 +36,7 @@ def main():
         arch.write_to_dir(dpath)
 
     if args.ls:
-        print("TODO: ls")
+        print(disk.get_metainf())
 
 
 if __name__ == '__main__':
