@@ -205,7 +205,16 @@ class ObjectEntry(Entry):
                 data += self.img.get_page(fpg)
                 if verbose:
                     print(f"{i:2} {fpg:#02x}", self.img.get_page(fpg))
+        else:
+            # Continuous files on the disk
+            print("NB: continuous file on disk", self.name, self.otype)
+            for i in range(self.pages_in_file):
+                data += self.img.get_page(fptr + i)
+            
         print(self.name, self.otype, len(data), self.max_byte_pointer)
+        if len(data) < self.max_byte_pointer:
+            print("WARNING: length of data shouldn't be lower than the max_byte_pointer", subidx, idx, fptr)
+            imd_common.hexdump_data(pg)
         if 1:
             return data[:self.max_byte_pointer+1]   # Assuming this is the actual end of the file
         return data
