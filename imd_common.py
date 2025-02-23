@@ -50,10 +50,12 @@ def get_full_img_ss(im):
 
 
 def hexdump_data(data):
-    print("     0  1  2  3  4  5  6  7   8  9  a  b  c  d  e  f    012345678 9abcdef")
+    print("          0  1  2  3  4  5  6  7   8  9  a  b  c  d  e  f    012345678 9abcdef")
+    offs = 0
     while len(data) > 0:
         cur = data[:16]
-        buf = "   "
+        buf = f"   {offs:4x} "
+        offs += 16
         buf2 = "  |"
         for i, c in enumerate(cur):
             buf += f" {c:02x}"
