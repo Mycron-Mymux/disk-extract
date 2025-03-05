@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 """
+Image support for Norsk Data (ND) formatted 8 inch floppies.
+
+This has been tested with a set of images from single sided, double density floppies.
+
+
 Based on documentation from: 
 http://heim.bitraf.no/tingo/files/nd/ND-60.052.04_NORD_File_System_April_1977_ocr.pdf
 http://heim.bitraf.no/tingo/files/nd/ND-60.122.02_NORD_File_System_-_System_Documentation_January_1980_ocr.pdf
@@ -11,7 +16,6 @@ NB:
 TODO:
 - check for more than one user (to be on the safe side).
 - check for files from more than one user.
-- export files.
 """
 
 import argparse
@@ -387,7 +391,7 @@ def main():
     global verbose
     ap = argparse.ArgumentParser()
     ap.add_argument("-hex", action="store_true")
-    ap.add_argument("-t0raw", nargs=1)
+    ap.add_argument("-toraw", nargs=1)
     ap.add_argument("fname", default="nd01.imd")
     ap.add_argument("-v", action="store_true")
     ap.add_argument("-pd", action="store_true", help="dump_pages")

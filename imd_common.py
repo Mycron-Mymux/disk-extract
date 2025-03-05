@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import copy
 from collections import defaultdict
 import imd
 from common import hexdump_data
@@ -22,27 +23,44 @@ def same_data(head0, head1):
     return True
 
 
-def get_tracks_skipping_dup_heads(im):
-    """Yields tracks from the image, but skips head 1 if it's eaqual to head 0"""
-    track_data = defaultdict(list)
-    for track in im.tracks:
-        track_data[track.cylinder].append(track)
-    
-    for tno, head_data in track_data.items():
-        assert len(head_data) <= 2, f"  {len(head_data)}"
-        assert head_data[0].head == 0
-        if len(head_data) > 1:
-            assert head_data[1].head == 1
-        for hno, td in enumerate(head_data):
-            if hno == 1 and same_data(head_data[0], td):
-                continue
-            yield (tno, hno, td)
+def conv_ds_to_ss(img):
+    """Converts a DS Disk image to SS. 
+    NB: this also verifies that head 1 (if present) is a copy of head 0.
+    And that head 1 data (if present) is identical to head 0 data.
+    This happens if an imd has been created from a single sided drive that was
+    scanned a double sided drive.
+    """
+    # make sure all tracks are extracted and sorted by track/head
+    tracks_h0 = {track.cylinder : track for track in img.tracks if track.head == 0}
+    tracks_h1 = {track.cylinder : track for track in img.tracks if imdtrack.head == 1}
+    assert len(tracks_h0) + len(tracks_h1) == len(img.tracks)
 
+    assert all(tno in tracks_h0 for tno in tracks_h1.keys()), f"all head 1 should have a corresponding head 0 track"
+    for tno, track1 in tracks_h1.items():
+        track0 = tracks_h0[tno]
+        assert same_data(track0, track1)
+
+    ntracks = sorted(tracks_h0.values(), key = lambda track: track.cylinder)
+    # A little naughty, but it _should_ work
+    im2 = copy.deepcopy(img)
+    im2.tracks = ntracks
+    return im2
+
+
+def get_sectors_in_order(track):
+    """A track may have the sectors out of order
+    This returns a list of sectors in the correct order
+    Returns a list of (sector number, track) in sorted order.
+    """
+    sectors = sorted(zip(track.sector_numbering_map, track.sector_data_records))
+    return sectors
+        
 
 def get_full_img_ss(im):
+    s_im = conv_ds_to_ss(im)
     img_data = b''
-    for tno, no, tdata in get_tracks_skipping_dup_heads(im):
-        for sec, sdr in enumerate(tdata.sector_data_records, start=1):
+    for track in s_im.tracks:
+        for sec, sdr in get_sectors_in_order(track):
             data = sdr.data
             if len(data) == 1:
                 data = data * tdata.sector_size

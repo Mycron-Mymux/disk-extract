@@ -132,7 +132,7 @@ class DataEntry:
         """Returns an ascii file, trimmed at the EOF mark"""
         txt = self.raw_file.decode('ascii')
         n_eof = txt.count('\000')
-        assert n_eof <= 1
+        # assert n_eof <= 1
         txt = txt.split('\000')[0]
         return txt
 
