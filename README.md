@@ -41,4 +41,3 @@ Warning: some tools used to store files 40+ years ago didn't correctly
 interpret backspace characters, so you might find filenames with
 backspaces in them. It is not necessarily a problem with the disk
 image.
-

@@ -4,7 +4,7 @@ TRAM diskettes
 TRAM was a text editor for the Mycron computers.
 
 Instead of using Mycron data file systems, the diskettes used their
-own file system. What is described under comes from reverse
+own file system. What is described below comes from reverse
 engineering 2 diskettes with TRAM documents on them. This is probably
 incomplete as we don't have a source that describes how the file
 format and file system worked.
@@ -34,8 +34,8 @@ File/text format
 
 - Characters in the text file appear to be stored as 8-bit bytes,
   where the most significant bit indicates formatting and the lower 7
-  bit represent 7-bit ASCII. At the moment, the assumption is that if
-  the formatting bit is set, it indicates underline of that character.
+  bit are 7-bit ASCII. At the moment, the assumption is that if
+  the formatting bit is set, it indicates underlining of that character.
 - Each track is split into lines of 79 characters
   - The first byte of a line indicates the line number relative to this page.
     If a line number is >= 0xe5, it is unused.
