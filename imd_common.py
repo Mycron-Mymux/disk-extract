@@ -32,7 +32,7 @@ def conv_ds_to_ss(img):
     """
     # make sure all tracks are extracted and sorted by track/head
     tracks_h0 = {track.cylinder : track for track in img.tracks if track.head == 0}
-    tracks_h1 = {track.cylinder : track for track in img.tracks if imdtrack.head == 1}
+    tracks_h1 = {track.cylinder : track for track in img.tracks if track.head == 1}
     assert len(tracks_h0) + len(tracks_h1) == len(img.tracks)
 
     assert all(tno in tracks_h0 for tno in tracks_h1.keys()), f"all head 1 should have a corresponding head 0 track"
@@ -52,12 +52,13 @@ def get_sectors_in_order(track):
     This returns a list of sectors in the correct order
     Returns a list of (sector number, track) in sorted order.
     """
-    sectors = sorted(zip(track.sector_numbering_map, track.sector_data_records))
+    # NB: some weird disk images have multiple copies of the same sector, so the sort function
+    # would then try to sort SectorDataRecord entries (which doesn't work). This avoids that.
+    sectors = sorted(zip(track.sector_numbering_map, track.sector_data_records), key=lambda x: x[0])
     return sectors
-        
 
-def get_full_img_ss(im):
-    s_im = conv_ds_to_ss(im)
+
+def get_raw_img(im):
     img_data = b''
     for track in s_im.tracks:
         for sec, sdr in get_sectors_in_order(track):
@@ -66,5 +67,10 @@ def get_full_img_ss(im):
                 data = data * tdata.sector_size
             img_data += data
     return img_data
+    
+
+def get_full_img_ss(im):
+    s_im = conv_ds_to_ss(im)
+    return get_raw_img(s_im)
 
 

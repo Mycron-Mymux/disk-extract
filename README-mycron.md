@@ -5,7 +5,7 @@ The main target is diskettes for the [Mycro-1](https://en.wikipedia.org/wiki/MYC
 developed by [Mycron](https://en.wikipedia.org/wiki/Mycron).
 These were 8-inch Single Side, Single Density diskettes.
 
-These are formatted using 77 sectors (numbered 0-76) and 26 sectors
+These are formatted using 77 tracks (numbered 0-76) and 26 sectors
 (numbered 1-26) with a sector size of 128 bytes. This gives us a raw
 capacity of '77*26*128=256256' bytes.
 
@@ -73,7 +73,7 @@ The diskettes can be identified as follows:
 - 'VOL1' in the beginning of sector 00.07 followed by a volume ID
 - Data file entries in sector 00.08-00.26
 
-Each data file entry takes up one full sector. They are made up of
+Each data file directory entry takes up one full sector. They are made up of
 (bytes are numbered starting from 1 corresponding to page 6-37 in the
 DIM-1030 documentation):
 
