@@ -13,9 +13,15 @@ def main():
         epilog="check this (TODO)")
 
     parser.add_argument('filename')
-    parser.add_argument('-tm', action="store_true", help="Image type is Mycron diskette")
-    parser.add_argument('-tt', action="store_true", help="Image type is Tram diskette")
-    parser.add_argument('-tn', action="store_true", help="Image type is ND diskette")
+
+    # Mutually exclusive group that also requires one to be specified.
+    # TODO: could also use --type mycron|tram|nd|... 
+    # Alternatively, provide image type detection.
+    types = parser.add_mutually_exclusive_group(required=True)
+    types.add_argument('-tm', action="store_true", help="Image type is Mycron diskette")
+    types.add_argument('-tt', action="store_true", help="Image type is Tram diskette")
+    types.add_argument('-tn', action="store_true", help="Image type is ND diskette")
+
     parser.add_argument('--zip', nargs=1, help="zip file to store extracted files in")
     parser.add_argument('--dir', nargs=1, help="directory to extract files into")
     parser.add_argument('-l', '--ls', action="store_true", help="List files in archive")

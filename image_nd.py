@@ -63,9 +63,10 @@ def decode_ptr(ptr):
 
 def decode_name(raw_str):
     """returns a string that does not include the ending ' and 0s"""
-    s = raw_str.decode('ascii').strip()
-    s1 = s.split("'")[0]
-    return s1
+    s = raw_str.decode('ascii').strip()   # does not remove NUL bytes
+    s = s.split("\x00", 1)[0]
+    s = s.split("'")[0]
+    return s.rstrip()
 
 
 def parse_date(word2):
@@ -185,6 +186,8 @@ class ObjectEntry(Entry):
         # if not indexed, continuous file.
         # if indexed, defined by an 1K index block, which contains pointers to the 1K data page of the file
         subidx, idx, fptr = decode_ptr(self.file_pointer)
+        if subidx:
+            raise NotImplementedError(f"{self.name=} {subidx=} {idx=}  {fptr=}")
         pg = self.img.get_page(fptr)
         s = ""
         if idx:
@@ -200,9 +203,13 @@ class ObjectEntry(Entry):
         # if not indexed, continuous file.
         # if indexed, defined by an 1K index block, which contains pointers to the 1K data page of the file
         subidx, idx, fptr = decode_ptr(self.file_pointer)
+        if subidx:
+            raise NotImplementedError(f"{self.name=} {subidx=} {idx=}  {fptr=}")
         pg = self.img.get_page(fptr)
         data = b''
         if idx:
+            if self.pages_in_file  * 4 > NDImage.PAGE_SIZE:
+                raise ValueError(f"indexes are 2 words. An index page can only have 512 indexes, but {self.pages_in_file=}")
             for i in range(self.pages_in_file):
                 fpg = bts_to_word2(pg[i*4:(i+1)*4])
                 # print(hex(fpg), self.img.get_page(fpg)[:32])
@@ -274,7 +281,12 @@ class NDImage:
         self.obj_file()
 
     def get_page(self, pno):
-        return self.data[pno * self.PAGE_SIZE: (pno+1) * self.PAGE_SIZE]
+        if not isinstance(pno, int) or pno < 0:
+            raise ValueError(f"Invalid page number: {pno!r}")
+        page = self.data[pno * self.PAGE_SIZE: (pno+1) * self.PAGE_SIZE]
+        if len(page) != self.PAGE_SIZE:
+            raise ValueError(f"Page is len {len(page)} - should be {PAGE_SIZE}")
+        return page
 
     def _extract_hdr(self):
         # Strictly speaking, this is the master block.
@@ -342,8 +354,7 @@ class NDImage:
         self.users = []
         subidx, idx, ptr = decode_ptr(self.usr_file_ptr)
         if subidx:
-            print("CANNOT PARSE SUBIDX YET")
-            return
+            raise NotImplementedError("CANNOT PARSE SUBIDX YET")
 
         # print(f"User file {subidx} {idx} {ptr:#x}")
         if idx:

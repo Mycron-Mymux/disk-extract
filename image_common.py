@@ -2,6 +2,7 @@
 
 import zipfile
 import pathlib
+import itertools
 
 # The first generations of Mycron computers used Single Side Single Density diskettes.
 TRACKS      =  77       # tracks are numbered 0..76
@@ -73,7 +74,7 @@ def ensure_dir(path):
     path = pathlib.Path(path)
     if not path.parent.exists():
         print(f"WARNING: creating subdir {path.parent} for {path}")
-        path.parent.mkdir(exist_ok=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
 
 
 class Archive:
@@ -86,6 +87,12 @@ class Archive:
         """ """
         if file.path in self.files:
             print(f"Path to file '{file.path}' added previously.")
+            for count in itertools.count():
+                if (new_fn := f"{file.path}--duplicate-{fnum:03d}") not in self.files:
+                    print(f"Adding file as {new_fn}")
+                    file.path = new_fn
+                    self.files[new_fn] = file
+                    return
         self.files[file.path] = file
 
     def write_to_zip(self, fname):
@@ -93,8 +100,7 @@ class Archive:
         with zipfile.ZipFile(fname, 'w') as zfile:
             for file in self.files.values():
                 print(" - ", file.path)
-                # TODO: will this be correct for binary files?
-                # Let file figure out if it's binary or text?
+                # writestr also handles bytes.
                 zfile.writestr(file.path, file.data)
 
     def write_to_dir(self, fname):

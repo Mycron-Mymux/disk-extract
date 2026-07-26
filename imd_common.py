@@ -55,6 +55,8 @@ def get_sectors_in_order(track):
     # NB: some weird disk images have multiple copies of the same sector, so the sort function
     # would then try to sort SectorDataRecord entries (which doesn't work). This avoids that.
     sectors = sorted(zip(track.sector_numbering_map, track.sector_data_records), key=lambda x: x[0])
+    sec_nums = {s[0] for s in sectors}
+    assert len(sec_nums) == len(sectors), f"Probably duplicate sectors {len(sec_nums)=} != {len(sectors)=}"
     return sectors
 
 

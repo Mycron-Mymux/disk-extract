@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from sqlite3 import NotSupportedError
 import sys
 import argparse
 import imd
@@ -38,6 +39,8 @@ class TramDisk:
         ssize = t.sector_size
         s = self.sectors[(tno, 0, sno)]
         d = s.data
+        if len(d) == 0:
+            raise NotSupportedError(f"Data size of 0 : {tno=} {sno=} {d=}")
         if len(d) == 1:
             return d * ssize
         return d

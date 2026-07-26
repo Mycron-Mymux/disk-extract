@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from sqlite3 import NotSupportedError
 import sys
 import imd
 from collections import defaultdict
@@ -33,6 +34,9 @@ def store_tracks(im, out_fname, ss=True):
         for track in im.tracks:
             for sec, sdr in imd_common.get_sectors_in_order(track):
                 data = sdr.data
+                if len(data) == 0:
+                    # Missing tracks 
+                    raise NotSupportedError(f"while writing to {out_fname}, {track=} {sec=} {data=} - probably missing track in image")
                 if len(data) == 1:
                     # Expand compressed sector
                     data = data * track.sector_size
@@ -45,7 +49,7 @@ def store_imd(im, out_fname, ss=True):
     if ss:
         im = imd_common.conv_ds_to_ss(im)
     with open(out_fname, 'wb') as out:
-        print(f"Duming IMD to {out_fname}")
+        print(f"Dumping IMD to {out_fname}")
         out.write(im.to_bytes())
 
 

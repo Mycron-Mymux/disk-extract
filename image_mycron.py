@@ -36,12 +36,20 @@ class ProgEntry:
     def __init__(self, ebytes, disk):
         self.ebytes = ebytes
         self.name = ebytes[:8].decode("ASCII").strip()
-        self.valid = len(self.name) > 0  # TODO: could also check if the other vars are also 0
+        # Set these to non-values in case it is necessary to bail out early from construction (valid=False)
+        self.sects1 = {}
+        self.sects2 = {}
+        self.seg1 = b''
+        self.seg2 = b''
+        self.valid = bool(self.name)  # TODO: could also check if the other vars are also 0
+        if not self.valid:
+            return
+
         # big endian > since high order byte is first..
         self.track0, self.sec0, self.seg1addr, self.seg1sz, self.seg2addr, self.seg2sz = struct.unpack(">BBHBHB", ebytes[8:])
-        if self.sec0 > SECTORS:
+        if (not (0 <= self.track0 < TRACKS)) or (not (1 <= self.sec0 <= SECTORS)):
             print(f"WARNING: Failed to read PROG entry {self.name=} {self.track0=} {self.sec0=} {self.seg1addr=} {self.seg1sz=} {self.seg2addr=} {self.seg2sz=} - setting to invalid")
-            print("SS-disks should have sectors in the range of 1..26")
+            print("SS-disks should have sectors in the range of 1..{SECTORS} tracks 0..{TRACKS-1}")
             self.valid = False
             return
 
@@ -142,20 +150,17 @@ class DataEntry:
         return txt
 
     def raw_file_to_eof(self):
-        rf = self.raw_file
-        n_eof = rf.count(0)
-        assert n_eof <= 1
-        return rf.split(b'\000')[0]
+        return self.raw_file.partition(b'\x00')[0]
 
     def files(self, dump_raw=True):
         if dump_raw:
             data = self.raw_file_to_eof()
         else:
-            data = self.ascii_file()
+            data = self.ascii_file().encode('ascii')
         yield File(self.name, data)
 
     def __str__(self):
-        s = f"DataEntry({self.name:8}, len {len(self.ascii_file()):7}, start {self.start_track:02}.{self.start_sect:02})"
+        s = f"DataEntry({self.name:8}, len {len(self.raw_file_to_eof()):7}, start {self.start_track:02}.{self.start_sect:02})"
         return s
 
 
