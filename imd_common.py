@@ -59,14 +59,18 @@ def get_sectors_in_order(track):
 
 
 def get_raw_img(im):
-    img_data = b''
-    for track in s_im.tracks:
+    img_data = bytearray()
+    for track in im.tracks:
         for sec, sdr in get_sectors_in_order(track):
+            if not sdr.record_type.has_data:
+                raise ValueError(f"Sector {track.cylinder}.{track.head}.{sec} is unavailable")
             data = sdr.data
-            if len(data) == 1:
-                data = data * tdata.sector_size
-            img_data += data
-    return img_data
+            if sdr.record_type.is_compressed:
+                data = data * track.sector_size
+            if len(data) != track.sector_size:
+                raise ValueError(f"Sector {track.cylinder}.{track.head}.{sec} has {len(data)} bytes, expected {track.sector_size}")
+            img_data.extend(data)
+    return bytes(img_data)
     
 
 def get_full_img_ss(im):

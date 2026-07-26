@@ -32,7 +32,7 @@ def hexdump_data(data):
             buf += " "
         print(buf, buf2)
         data = data[16:]
-    
+
 
 def hexdump_as_lines(data):
     """Yields lines of text that can be used to print a hexdump of the provided data"""
@@ -56,5 +56,3 @@ def hexdump_as_lines(data):
             buf += " "
         yield f"{buf} {buf2}"
         data = data[16:]
-    
-

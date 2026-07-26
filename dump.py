@@ -28,7 +28,7 @@ def main():
         disk = image_tram.TramDisk(args.filename)
     if args.tn:
         disk = image_nd.NDImage(args.filename)
-        
+
     if args.zip:
         zip_fname = args.zip[0]
         arch = disk.get_archive()
@@ -45,4 +45,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

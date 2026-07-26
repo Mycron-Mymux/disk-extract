@@ -5,7 +5,7 @@ Image support for Norsk Data (ND) formatted 8 inch floppies.
 This has been tested with a set of images from single sided, double density floppies.
 
 
-Based on documentation from: 
+Based on documentation from:
 http://heim.bitraf.no/tingo/files/nd/ND-60.052.04_NORD_File_System_April_1977_ocr.pdf
 http://heim.bitraf.no/tingo/files/nd/ND-60.122.02_NORD_File_System_-_System_Documentation_January_1980_ocr.pdf
 
@@ -36,7 +36,7 @@ def bts_to_ptr(buf):
 
 def bts_to_word(buf):
     return struct.unpack(">H", buf)[0]
-    
+
 
 def bts_to_word2(buf):
     return struct.unpack(">L", buf)[0]
@@ -52,9 +52,9 @@ def bts_extract(data, start, end):
         case 1:
             return bts_to_word2(data[start*2:(end+1)*2])
         case _:
-            raise f"Not supported yet: bts_extract(data, {start}, {end})"
-            
-    
+            raise NotImplementedError(f"Not supported yet: bts_extract(data, {start}, {end})")
+
+
 def decode_ptr(ptr):
     subindexed = bit_set(ptr, 31)
     indexed    = bit_set(ptr, 30)
@@ -66,7 +66,7 @@ def decode_name(raw_str):
     s = raw_str.decode('ascii').strip()
     s1 = s.split("'")[0]
     return s1
-    
+
 
 def parse_date(word2):
     # 6 bits - year - 1950
@@ -82,7 +82,7 @@ def parse_date(word2):
     month = (word2 >> 22)  & 0xf
     year  = (word2 >> 26)  & 0x3f
     return (year + 1950, month, day, hour, mins, secs)
-    
+
 
 def decode_obj_entry_info(word):
     u = bit_set(word, 15)
@@ -118,7 +118,7 @@ class Entry:
         if end is None:
             end = start
         return self.data[start*2:(end+1)*2]
-        
+
 class ObjectEntry(Entry):
 
     # http://heim.bitraf.no/tingo/files/nd/ND-60.052.04_NORD_File_System_April_1977_ocr.pdf
@@ -152,16 +152,16 @@ class ObjectEntry(Entry):
         self.access_public = (self.access_bits >> 10) & 0x1f
         self.ftype       = self._get_words(0o16)
         self.device_num  = self._get_words(0o17)
-        self.usr_idx_res = self._get_words(0o20)  
-        self.obj_idx     = self._get_words(0o21)  
-        self.cur_open    = self._get_words(0o22)  
-        self.tot_open    = self._get_words(0o23)  
-        self.date_create = self._get_words(0o24, 0o25) 
+        self.usr_idx_res = self._get_words(0o20)
+        self.obj_idx     = self._get_words(0o21)
+        self.cur_open    = self._get_words(0o22)
+        self.tot_open    = self._get_words(0o23)
+        self.date_create = self._get_words(0o24, 0o25)
         self.date_last_rd = self._get_words(0o26, 0o27) # last data opened for read
         self.date_last_wr = self._get_words(0o30, 0o31) # last data opened for write
         self.pages_in_file = self._get_words(0o32, 0o33) # bts_to_word2(self.data[52:56])
         self.max_byte_pointer = self._get_words(0o34, 0o35) # bts_to_word2(self.data[56:60])
-        self.file_pointer = self._get_words(0o36, 0o37) # bts_to_word2(self.data[60:64]) 
+        self.file_pointer = self._get_words(0o36, 0o37) # bts_to_word2(self.data[60:64])
 
     def dump_str(self):
         s = "\n".join([
@@ -170,7 +170,7 @@ class ObjectEntry(Entry):
             f" - {self.ptr_next_ver=:#x} {self.ptr_prev_ver=:#x}",
             f" - {self.access_bits=:#x} : {self.access_public=:#x}, {self.access_friend=:#x}, {self.access_owner=:#x}",
             f" - {self.ftype=:#x} {self.obj_idx=:#x}",
-            f" - {self.date_create=:#x} {parse_date(self.date_create)}", 
+            f" - {self.date_create=:#x} {parse_date(self.date_create)}",
             f" - {self.date_last_rd=:#x} {parse_date(self.date_last_rd)}",
             f" - {self.date_last_wr=:#x} {parse_date(self.date_last_wr)}",
             f" - {self.pages_in_file=:#x}",
@@ -195,7 +195,7 @@ class ObjectEntry(Entry):
                     # print(f"{i:2} {fpg:#02x}", self.img.get_page(fpg))
                     s += f"{i:2} {fpg:#02x} {self.img.get_page(fpg)}\n"
         return s
-    
+
     def get_file(self):
         # if not indexed, continuous file.
         # if indexed, defined by an 1K index block, which contains pointers to the 1K data page of the file
@@ -214,7 +214,7 @@ class ObjectEntry(Entry):
             print("NB: continuous file on disk", self.name, self.otype)
             for i in range(self.pages_in_file):
                 data += self.img.get_page(fptr + i)
-            
+
         print(self.name, self.otype, len(data), self.max_byte_pointer)
         if len(data) < self.max_byte_pointer:
             print("WARNING: length of data shouldn't be lower than the max_byte_pointer", subidx, idx, fptr)
@@ -243,7 +243,7 @@ class UserEntry(Entry):
 
     def dump_str(self):
         s = "\n".join([
-            f"--- user entry: {self.user_name}", 
+            f"--- user entry: {self.user_name}",
             f" - {self.hu=} {self.hf=}",
             f" - password            : {self.password}",
             f" - date created        : {parse_date(self.date_created)}  - {self.date_created:#x}",
@@ -261,7 +261,7 @@ class UserEntry(Entry):
 class NDImage:
     PAGE_SIZE = 2048   # 1024 words of 16 bits
     PTR_SIZE  = 4      # 4 bytes
-    
+
     def __init__(self, fname):
         self.fname = fname
         # TODO: should perhaps check a bit more robustly for IMD files.
@@ -286,7 +286,7 @@ class NDImage:
         self.usr_file_ptr = bts_to_ptr(self.hdr[20:24])
         self.bit_file_ptr = bts_to_ptr(self.hdr[24:28])
         self.not_res_pgs  = bts_to_ptr(self.hdr[28:32])
-        
+
     def _obj_file_pg(self, pg_no):
         # print(f"--- decoding obj file entry from page {pg_no:#x}")
         page = self.get_page(pg_no)
@@ -297,7 +297,7 @@ class NDImage:
                 # obj.dump()
                 objs.append(obj)
         return objs
-        
+
     def obj_file(self):
         self.objects = []
         subidx, idx, ptr = decode_ptr(self.obj_file_ptr)
@@ -312,19 +312,19 @@ class NDImage:
             # Theres up to 8 * 32 = 256 files per user on a disk
             # http://heim.bitraf.no/tingo/files/nd/ND-60.122.02_NORD_File_System_-_System_Documentation_January_1980_ocr.pdf
             # page 21
-            # NB: this assumes there is only one user! 
+            # NB: this assumes there is only one user!
             for i in range(8):
                 pg_no = bts_to_word2(pg_idx[i*4:(i+1)*4])
                 if pg_no > 0:
                     self.objects.extend(self._obj_file_pg(pg_no))
         else:
             self.objects.extend(self._obj_file_pg(ptr))
-        
-            
+
+
     # ND-60.122.02 page 2-8
     # The user file contains information on all the users of the medium.
     # Each medium may have 256 users. Each user has a 32 word entry in the user file.
-    # 
+    #
     # The user file is organized as an indexed file, i.e., the user file pointer in the
     # directory entry points to an inciex block. The index block contains up to 8 double
     # word pointers to user file pages. This structure is illustrated in Figure 2.10.
@@ -337,7 +337,7 @@ class NDImage:
                 # obj.dump()
                 objs.append(obj)
         return objs
-    
+
     def usr_file(self):
         self.users = []
         subidx, idx, ptr = decode_ptr(self.usr_file_ptr)
@@ -354,7 +354,7 @@ class NDImage:
                     # print(f" --- valid usr pg {pg_no:#x}")
                     self.users.extend(self._usr_file_pg(pg_no))
         else:
-            self.users.extend(self._usr_file_pg(pg_no))
+            self.users.extend(self._usr_file_pg(ptr))
 
     def get_metainf(self):
         s = f"{self.fname}\n"
@@ -368,7 +368,7 @@ class NDImage:
         for obj in self.objects:
             archive.add_file(File(f"{obj.name}.{obj.otype}", obj.get_file()))
         return archive
-            
+
 
     def print_hdr(self):
         # print('raw', self.hdr)
@@ -385,7 +385,7 @@ class NDImage:
             page = self.get_page(pno)
             print(f"--- {self.fname} page {pno:3} {pno:#3x}")
             imd_common.hexdump_data(page)
-            
+
 
 def main():
     global verbose
@@ -407,9 +407,9 @@ def main():
         return
     if args.ls:
         print(img.get_metainf())
-        
+
     # img.print_hdr()
-    
+
 
 if __name__ == '__main__':
     main()

@@ -39,10 +39,15 @@ class ProgEntry:
         self.valid = len(self.name) > 0  # TODO: could also check if the other vars are also 0
         # big endian > since high order byte is first..
         self.track0, self.sec0, self.seg1addr, self.seg1sz, self.seg2addr, self.seg2sz = struct.unpack(">BBHBHB", ebytes[8:])
+        if self.sec0 > SECTORS:
+            print(f"WARNING: Failed to read PROG entry {self.name=} {self.track0=} {self.sec0=} {self.seg1addr=} {self.seg1sz=} {self.seg2addr=} {self.seg2sz=} - setting to invalid")
+            print("SS-disks should have sectors in the range of 1..26")
+            self.valid = False
+            return
 
         et1, es1 = add_sects(self.track0, self.sec0, self.seg1sz)
         et2, es2 = add_sects(et1, es1, self.seg2sz)
-        
+
         self.sects1 = disk.get_sectors(self.track0, self.sec0, et1, es1)
         self.sects2 = disk.get_sectors(et1, es1, et2, es2)
         self.seg1 = b''.join(self.sects1.values())
@@ -84,7 +89,7 @@ class ProgEntry:
 # - 73    verify mark: V = has been verified
 # - 74    end of Data. indicates address of next unused sector of data set (init  was 01001 sect 8, 74001 on sect 9-26)
 # - 80    reserved or blank
-# TODO: I'm not verifying all of the above. 
+# TODO: I'm not verifying all of the above.
 class DataEntry:
     @classmethod
     def verify_data_entry(cls, sect):
@@ -97,7 +102,7 @@ class DataEntry:
         if hdr != "HDR1 ":
             return False
         return True
-    
+
     def __init__(self, sect, disk):
         self.sect = sect
         try:
@@ -189,7 +194,7 @@ class MycronDiskette:
             case _:
                 self.disktype = "ERROR"
                 self.volid = "ERROR"
-                raise f"blarg {sect}"
+                raise ValueError("Unknown {vol1=} at {sect=}")
 
     def _get_data_files(self):
         dl = []
@@ -245,8 +250,3 @@ class MycronDiskette:
                 trk += 1
                 sct = 1
         return sectors
-
-
-
-
-

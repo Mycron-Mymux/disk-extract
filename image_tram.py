@@ -16,15 +16,15 @@ class TramDisk:
         for t in d.tracks:
             k = (t.cylinder, t.head)
             if k in self.track_data:
-                raise f"Failed... {k} already exists in track_data"
+                raise ValueError(f"Failed... {k} already exists in track_data")
             self.track_data[(t.cylinder, t.head)] = t
 
         self.sectors = dict()
         for t in d.tracks:
-            for sno, s in enumerate(t.sector_data_records, start=1):
+            for sno, s in zip(t.sector_numbering_map, t.sector_data_records):
                 k = (t.cylinder, t.head, sno)
                 if k in self.sectors:
-                    raise f"Failed to add sectors {k} already exists in sectors dict"
+                    raise ValueError(f"Duplicate sector {k}")
                 self.sectors[k] = s
 
         d = self.get_sector_data(0, 1)
@@ -45,8 +45,8 @@ class TramDisk:
     def get_raw_hdr(self):
         """Assuming that sector 1-5 are header sectors - returns a raw byte string
         of these sectors"""
-        return b''.join([self.get_sector_data(0, i) for i in range(1, 5)])
-    
+        return b''.join([self.get_sector_data(0, i) for i in range(1, 6)])
+
     def filenames(self):
         """Returns a list of filenames on the image"""
         hdr = self.get_raw_hdr()
@@ -161,7 +161,7 @@ def tram_raw_dump_documents(fname):
             print("   -- remaining bytes of track", remainder)
             imd_common.hexdump_data(remainder)
 
-    
+
 
 def main():
     """For inspecting the document formats"""

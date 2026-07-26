@@ -75,7 +75,7 @@ def ensure_dir(path):
         print(f"WARNING: creating subdir {path.parent} for {path}")
         path.parent.mkdir(exist_ok=True)
 
-        
+
 class Archive:
     """Keeps a list of files extracted from a disk"""
     def __init__(self, fname):
@@ -96,7 +96,7 @@ class Archive:
                 # TODO: will this be correct for binary files?
                 # Let file figure out if it's binary or text?
                 zfile.writestr(file.path, file.data)
-                
+
     def write_to_dir(self, fname):
         dpath = pathlib.Path(fname)
         if not dpath.exists() or not dpath.is_dir():
@@ -110,4 +110,3 @@ class Archive:
             print("  - ", fn)
             with open(fn, 'wb') as f:
                 f.write(file.data)
-            

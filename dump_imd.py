@@ -47,16 +47,16 @@ def store_imd(im, out_fname, ss=True):
     with open(out_fname, 'wb') as out:
         print(f"Duming IMD to {out_fname}")
         out.write(im.to_bytes())
-    
+
 
 def check_for_errors(im):
     for track in im.tracks:
         for sec, sdr in imd_common.get_sectors_in_order(track):
             if sdr.record_type.has_error:   # or sdr.record_type.is_deleted:
                 print(f"- Error in sector {track.cylinder:02}.{track.head}.{sec:02}")
-        
 
-if __name__ == "__main__":                
+
+if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("-hex",   action="store_true")
     ap.add_argument("-toraw", nargs=1)
@@ -88,7 +88,3 @@ if __name__ == "__main__":
         if args.ce:
             print("Errors in", args.fname)
             check_for_errors(d)
-        
-        
-    
-
