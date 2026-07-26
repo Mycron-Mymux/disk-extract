@@ -12,6 +12,7 @@ TODO:
 """
 import struct
 import image_common
+import json
 from image_common import split_disk, split_sect, add_sects, extract_ascii
 from image_common import File, Archive
 
@@ -61,6 +62,24 @@ class ProgEntry:
         self.seg1 = b''.join(self.sects1.values())
         self.seg2 = b''.join(self.sects2.values())
 
+    def to_dict(self):
+        # NB: json does not support hex addrs
+        def make_seg(no, addr, sect_count, byte_count):
+            return {
+                "number" : no,
+                "load_addr":  addr,
+                "sect_count": sect_count,
+                "byte_count": byte_count}
+
+        return {
+            "name" : self.name,
+            "disk_start": {"track" : self.track0, "sector" : self.sec0},
+            "segments" : [
+                make_seg(1, self.seg1addr, self.seg1sz, len(self.seg1)),
+                make_seg(2, self.seg2addr, self.seg2sz, len(self.seg2)),
+            ]
+        }
+
     def __str__(self):
         s = f"ProgEntry({self.name:8}, t/s0={self.track0:2}.{self.sec0:2}, "
         s += f"seg 1 at {self.seg1addr:#6x} sz {self.seg1sz:#6x} len {len(self.seg1):#6x}, "
@@ -69,7 +88,8 @@ class ProgEntry:
         return s
 
     def files(self):
-        yield File(f"{self.name}.meta", bytes(str(self), encoding="ascii"))
+        yield File(f"{self.name}.meta", bytes(str(self) + "\n", encoding="ascii"))
+        yield File(f"{self.name}.meta.json", bytes(json.dumps(self.to_dict()) + "\n", encoding="ascii"))
         if len(self.seg1) > 0:
             yield File(f"{self.name}.seg1.bin", self.seg1)
         if len(self.seg2) > 0:
@@ -227,7 +247,10 @@ class MycronDiskette:
 
     def get_metainf(self):
         s = f"{self.fname}\n"
-        return s + "\n".join([str(f) for f in self.files])
+        s + "\n".join([str(f) for f in self.files])
+        if not s.endswith("\n"):
+            s += "\n"
+        return s
 
     def get_archive(self):
         # TODO: add a .meta file for the archive?
