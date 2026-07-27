@@ -20,7 +20,7 @@ TODO:
 
 import argparse
 import struct
-from common import hexdump_data
+from utils import hexdump_data
 from image_common import Archive, File, read_image_bytes
 
 verbose = False

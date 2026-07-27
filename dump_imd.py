@@ -2,7 +2,7 @@
 
 import imd_common
 import argparse
-from common import hexdump_data
+from utils import hexdump_data
 
 
 def dump_tracks(im, dump_hex=False, ss=True):

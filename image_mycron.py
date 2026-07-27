@@ -13,12 +13,7 @@ TODO:
 import struct
 import json
 from image_common import split_disk, split_sect, add_sects, extract_ascii
-from image_common import File, Archive
-
-# The first generations of Mycron computers used Single Side Single Density diskettes.
-TRACKS=77        # tracks are numbered 0..76
-SECTORS=26       # sectors are numbered 1..26
-SECTOR_SIZE=128
+from image_common import File, Archive, TRACKS, SECTORS, SECTOR_SIZE
 
 
 # program entry, 16 bytes
@@ -49,7 +44,7 @@ class ProgEntry:
         self.track0, self.sec0, self.seg1addr, self.seg1sz, self.seg2addr, self.seg2sz = struct.unpack(">BBHBHB", ebytes[8:])
         if (not (0 <= self.track0 < TRACKS)) or (not (1 <= self.sec0 <= SECTORS)):
             print(f"WARNING: Failed to read PROG entry {self.name=} {self.track0=} {self.sec0=} {self.seg1addr=} {self.seg1sz=} {self.seg2addr=} {self.seg2sz=} - setting to invalid")
-            print(f"SS-disks should have sectors in the range of 1..{SECTORS} tracks 0..{TRACKS-1}")
+            print(f"Mycron 8-inch single side-disks should have tracks in the range 0..{TRACKS-1}, sectors 1..{SECTORS}")
             self.valid = False
             return
 

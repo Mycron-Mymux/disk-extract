@@ -1,14 +1,11 @@
 #!/usr/bin/env python
 
-from ast import keyword
-from tkinter import image_types
 import zipfile
 import pathlib
 import itertools
 import imd_common
 from pathlib import Path
 import imd
-
 
 # The first generations of Mycron computers used Single Side Single Density diskettes.
 TRACKS      =  77       # tracks are numbered 0..76
@@ -39,17 +36,22 @@ def split_sect(sect, psize):
     return [sect[offset:offset+psize] for offset in range(0, len(sect), psize)]
 
 
-def add_sects(track, sect, nsect, num_sectors=SECTORS):
+def sector_index(track, sector, sectors_per_track=SECTORS):
+    if sector < 1 or sector > sectors_per_track:
+        raise ValueError(f"Invalid sector: {sector}")
+    return track * sectors_per_track + sector - 1
+
+
+def sector_address(index, sectors_per_track=SECTORS):
+    track, sector = divmod(index, sectors_per_track)
+    return track, sector + 1
+
+
+def add_sects(track, sector, count, sectors_per_track=SECTORS):
     """add sectors to address starting at track and sect, returning track,sect or
     result"""
-    # TODO: I'm just tired now, and I can't use modulo here - at least not without thinking.
-    # The solution is probably to reduce sect with 1 to work with base 0 and then just add 1 to the result
-    for _ in range(nsect):
-        sect += 1
-        if sect > num_sectors:
-            sect = 1
-            track += 1
-    return track, sect
+    return sector_address(sector_index(track, sector, sectors_per_track) + count,
+                          sectors_per_track)
 
 
 def extract_ascii(sect, start, stop):
@@ -102,7 +104,7 @@ class DiskImage:
         if key not in self.sectors:
             raise ValueError(f"Sector not in image: {track=} {sector=}")
         return self.sectors[key]
-    
+
     @classmethod
     def from_file(cls, fname):
         data, imgtype = read_image_bytes(fname)
@@ -128,7 +130,7 @@ class DiskImage:
                 return "mycron-prog"
             if s7.startswith(b'VOL1'):
                 return "mycron-data"
-        
+
 
 class Archive:
     """Keeps a list of files extracted from a disk"""
@@ -174,6 +176,15 @@ class Archive:
 
 if __name__ == "__main__":
     import sys
+
+    print("Verifying func equiv")
+    for track in range(TRACKS):
+        for sect in range(1, SECTORS+1):
+            for i in range(100):
+                v1 = add_sects(track, sect, i, ver=1)
+                v2 = add_sects(track, sect, i, ver=0)
+                assert v1 == v2, f"{v1=} {v2=}"
+
     for fname in sys.argv[1:]:
         try:
             img = DiskImage.from_file(fname)
@@ -185,4 +196,3 @@ if __name__ == "__main__":
             for track in range(TRACKS):
                 for sector in range(1, SECTORS +1):
                     img.read_sector(track, sector)
-        

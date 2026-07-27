@@ -9,17 +9,13 @@ from rich.console import Console
 import argparse
 import pathlib
 
-USE_RICH=False
 USE_RICH=True
 
 console = Console()
 
 
 def val2chr(val):
-    v = val & 0x7f
-    c = bytes([v]).decode('latin1')
-    c2 = chr(v)
-    assert c == c2    # probably doesn't matter since we're decoding 7-bit ascii
+    c = chr(val & 0x7f)  # should be safe with 7-bit ascii
     return c
 
 
