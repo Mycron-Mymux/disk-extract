@@ -1,8 +1,14 @@
 #!/usr/bin/env python
 
+from ast import keyword
+from tkinter import image_types
 import zipfile
 import pathlib
 import itertools
+import imd_common
+from pathlib import Path
+import imd
+
 
 # The first generations of Mycron computers used Single Side Single Density diskettes.
 TRACKS      =  77       # tracks are numbered 0..76
@@ -14,29 +20,23 @@ def split_disk(data, tracks=TRACKS, sectors=SECTORS, sector_size=SECTOR_SIZE):
     """splits a disk into tracks and sectors
     returns a (track,sector) list
     """
+    expected_size = tracks * sectors * sector_size
+    if len(data) != expected_size:
+        raise ValueError(f"splitting data of len {len(data)} failed. Expected len = {expected_size}")
+
     disk = {}
-    assert len(data) % sector_size == 0
-    assert len(data) == tracks * sectors * sector_size
-    for track in range(tracks):
-        # print(track, end=' ')
-        for sector in range(sectors):
-            # print(f's{sector}', end=',')
-            offset = (track * sectors + sector ) * sector_size
-            d = data[offset:offset + sector_size]
-            assert len(d) == sector_size
-            # looks like the mycron docs address sectors 1..26
-            disk[(track, sector + 1)] = d
-        # print()
-    # print(track * sector * sector_size + sector_size)
+    for index in range(tracks * sectors):
+        track, sector = divmod(index, sectors)
+        offset = index * sector_size
+        d = data[offset:offset + sector_size]
+        assert len(d) == sector_size
+        disk[(track, sector + 1)] = d
     return disk
 
 
 def split_sect(sect, psize):
     """Split a sector into equal size parts"""
-    parts = []
-    for offset in range(0, len(sect), psize):
-        parts.append(sect[offset:offset+psize])
-    return parts
+    return [sect[offset:offset+psize] for offset in range(0, len(sect), psize)]
 
 
 def add_sects(track, sect, nsect, num_sectors=SECTORS):
@@ -77,6 +77,59 @@ def ensure_dir(path):
         path.parent.mkdir(parents=True, exist_ok=True)
 
 
+def read_image_bytes(path):
+    data = Path(path).read_bytes()
+
+    if data.startswith(b"IMD "):
+        image = imd.Disk.from_bytes(data)
+        return imd_common.get_full_img_ss(image), "imd"
+
+    return data, "raw"
+
+
+class DiskImage:
+    """
+    NB: The ND diskettes found so far have 154 and 154 tracks (as reported by imd)
+    """
+    def __init__(self, fname, data, sectors, imgtype):
+        self.fname = fname
+        self.data = data
+        self.sectors = sectors
+        self.imgtype = imgtype
+
+    def read_sector(self, track, sector):
+        key = (track, sector)
+        if key not in self.sectors:
+            raise ValueError(f"Sector not in image: {track=} {sector=}")
+        return self.sectors[key]
+    
+    @classmethod
+    def from_file(cls, fname):
+        data, imgtype = read_image_bytes(fname)
+        # TODO: this is not going to work for ND images. They use a different disk format
+        # that will end up with significantly more data per diskette.
+        try:
+            sectors = split_disk(data)
+        except ValueError:
+            print(f"WARNING: {fname} splitting into sectors failed for data of len {len(data)}, could be a non-mycron disk format. sector index is blank")
+            sectors = {}
+        return cls(fname, data, sectors, imgtype)
+
+    def detect_filesystem(self):
+        if len(self.sectors) == 0:
+            print(f"WARNING: {self.fname} no sectors defined, assuming non-mycron disk format")
+            return
+        if self.sectors[(0, 1)].startswith(b"*TRAM"):
+            return "tram"
+        s5 = self.sectors[(0, 5)]
+        s7 = self.sectors[(0, 7)]
+        if s5.startswith(b'ERMAP'):
+            if s7.startswith(b'PROG'):
+                return "mycron-prog"
+            if s7.startswith(b'VOL1'):
+                return "mycron-data"
+        
+
 class Archive:
     """Keeps a list of files extracted from a disk"""
     def __init__(self, fname):
@@ -85,15 +138,17 @@ class Archive:
 
     def add_file(self, file):
         """ """
-        if file.path in self.files:
-            print(f"Path to file '{file.path}' added previously.")
-            for count in itertools.count():
-                if (new_fn := f"{file.path}--duplicate-{fnum:03d}") not in self.files:
+        path = file.path
+        if path in self.files:
+            print(f"Path to file '{path}' added previously.")
+            for count in itertools.count(1):
+                if (new_fn := f"{path}--duplicate-{count:03d}") not in self.files:
                     print(f"Adding file as {new_fn}")
-                    file.path = new_fn
-                    self.files[new_fn] = file
+                    path = new_fn
+                    file.path = path    # can't access the file afterwards if not. TODO: consider handling this in each of the write_X
+                    self.files[path] = file
                     return
-        self.files[file.path] = file
+        self.files[path] = file
 
     def write_to_zip(self, fname):
         print("Storing in zip file:", fname)
@@ -114,5 +169,20 @@ class Archive:
             fn = dpath / file.path
             ensure_dir(fn)
             print("  - ", fn)
-            with open(fn, 'wb') as f:
-                f.write(file.data)
+            pathlib.Path(fn).write_bytes(file.data)
+
+
+if __name__ == "__main__":
+    import sys
+    for fname in sys.argv[1:]:
+        try:
+            img = DiskImage.from_file(fname)
+        except AssertionError as e:
+            print("file was", fname)
+            raise
+        print(f"-- {fname} {img.imgtype}", img.detect_filesystem())
+        if len(img.sectors) > 0:
+            for track in range(TRACKS):
+                for sector in range(1, SECTORS +1):
+                    img.read_sector(track, sector)
+        

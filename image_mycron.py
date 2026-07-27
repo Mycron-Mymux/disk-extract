@@ -11,7 +11,6 @@ TODO:
 
 """
 import struct
-import image_common
 import json
 from image_common import split_disk, split_sect, add_sects, extract_ascii
 from image_common import File, Archive
@@ -50,7 +49,7 @@ class ProgEntry:
         self.track0, self.sec0, self.seg1addr, self.seg1sz, self.seg2addr, self.seg2sz = struct.unpack(">BBHBHB", ebytes[8:])
         if (not (0 <= self.track0 < TRACKS)) or (not (1 <= self.sec0 <= SECTORS)):
             print(f"WARNING: Failed to read PROG entry {self.name=} {self.track0=} {self.sec0=} {self.seg1addr=} {self.seg1sz=} {self.seg2addr=} {self.seg2sz=} - setting to invalid")
-            print("SS-disks should have sectors in the range of 1..{SECTORS} tracks 0..{TRACKS-1}")
+            print(f"SS-disks should have sectors in the range of 1..{SECTORS} tracks 0..{TRACKS-1}")
             self.valid = False
             return
 
@@ -124,7 +123,7 @@ class DataEntry:
         """True if this seems to be a sector describing a data file entry"""
         try:
             hdr = sect[:5].decode("ASCII")
-        except:
+        except UnicodeDecodeError:
             # print("Couldn't decode", sect[:5])
             return False
         if hdr != "HDR1 ":
@@ -135,7 +134,7 @@ class DataEntry:
         self.sect = sect
         try:
             self.ascii = sect.decode('ascii')
-        except:
+        except UnicodeDecodeError:
             print("Could not decode", sect)
             raise
         assert self._sub(1, 5) == 'HDR1 '
@@ -144,6 +143,7 @@ class DataEntry:
         self.raw_beo = self._sub(29, 33)
         self.raw_eoe = self._sub(35, 39)
         # This is the first free sector in the dataset, so it's not supposed to be included in the files.
+        # NB: doc above states 74, but using 74 here leaves us with empty files.
         self.raw_eod = self._sub(75, 79)
         assert self.raw_beo[2] == '0' and self.raw_eoe[2] == '0'
         self.rec_len = int(self.raw_reclen)
@@ -156,7 +156,7 @@ class DataEntry:
         self.eda_sect  = int(self.raw_eod[3:])
 
         self.fsectors = disk.get_sectors(self.start_track, self.start_sect, self.eda_track, self.eda_sect)
-        self.raw_file = b''.join(s for s in self.fsectors.values())
+        self.raw_file = b''.join(self.fsectors.values())
 
     def _sub(self, start, end):
         return self.ascii[start-1:end]
@@ -219,7 +219,7 @@ class MycronDiskette:
             case _:
                 self.disktype = "ERROR"
                 self.volid = "ERROR"
-                raise ValueError("Unknown {vol1=} at {sect=}")
+                raise ValueError(f"Unknown {vol1=} at {sect=}")
 
     def _get_data_files(self):
         dl = []
@@ -247,7 +247,7 @@ class MycronDiskette:
 
     def get_metainf(self):
         s = f"{self.fname}\n"
-        s + "\n".join([str(f) for f in self.files])
+        s += "\n".join([str(f) for f in self.files])
         if not s.endswith("\n"):
             s += "\n"
         return s

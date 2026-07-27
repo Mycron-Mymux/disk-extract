@@ -1,11 +1,8 @@
 #!/usr/bin/env python
 
-from sqlite3 import NotSupportedError
-import sys
-import imd
-from collections import defaultdict
 import imd_common
 import argparse
+from common import hexdump_data
 
 
 def dump_tracks(im, dump_hex=False, ss=True):
@@ -20,7 +17,7 @@ def dump_tracks(im, dump_hex=False, ss=True):
         for sec, sdr in imd_common.get_sectors_in_order(track):
             if dump_hex:
                 print(f"  {tno:02}.{t.head}.{sec:02} {len(sdr.data):3}")
-                imd_common.hexdump_data(sdr.data)
+                hexdump_data(sdr.data)
             else:
                 print(f"  {tno:02}.{t.head}.{sec:02} {len(sdr.data):3}", sdr)
 
@@ -36,7 +33,7 @@ def store_tracks(im, out_fname, ss=True):
                 data = sdr.data
                 if len(data) == 0:
                     # Missing tracks 
-                    raise NotSupportedError(f"while writing to {out_fname}, {track=} {sec=} {data=} - probably missing track in image")
+                    raise ValueError(f"while writing to {out_fname}, {track=} {sec=} {data=} - probably missing track in image")
                 if len(data) == 1:
                     # Expand compressed sector
                     data = data * track.sector_size

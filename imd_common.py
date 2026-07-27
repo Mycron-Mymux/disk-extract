@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 
 import copy
-from collections import defaultdict
 import imd
-from common import hexdump_data
 
 
 def read_imd(fname):

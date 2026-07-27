@@ -20,8 +20,8 @@ TODO:
 
 import argparse
 import struct
-import imd_common
-from image_common import Archive, File
+from common import hexdump_data
+from image_common import Archive, File, read_image_bytes
 
 verbose = False
 
@@ -225,7 +225,7 @@ class ObjectEntry(Entry):
         print(self.name, self.otype, len(data), self.max_byte_pointer)
         if len(data) < self.max_byte_pointer:
             print("WARNING: length of data shouldn't be lower than the max_byte_pointer", subidx, idx, fptr)
-            imd_common.hexdump_data(pg)
+            hexdump_data(pg)
         if 1:
             return data[:self.max_byte_pointer+1]   # Assuming this is the actual end of the file
         return data
@@ -261,7 +261,7 @@ class UserEntry(Entry):
             f" - mail flag           : {self.mail_flag}",
             f" - default file access : {self.user_default_file_access:#x}"
         ])
-        # imd_common.hexdump_data(self.data)
+        # hexdump_data(self.data)
         return s
 
 
@@ -271,11 +271,7 @@ class NDImage:
 
     def __init__(self, fname):
         self.fname = fname
-        # TODO: should perhaps check a bit more robustly for IMD files.
-        self.data = open(fname, 'rb').read()
-        if self.data[:4] == b'IMD ':
-            im = imd_common.read_imd(fname)
-            self.data = imd_common.get_full_img_ss(im)
+        self.data, _ = read_image_bytes(fname)
         self._extract_hdr()
         self.usr_file()
         self.obj_file()
@@ -285,7 +281,7 @@ class NDImage:
             raise ValueError(f"Invalid page number: {pno!r}")
         page = self.data[pno * self.PAGE_SIZE: (pno+1) * self.PAGE_SIZE]
         if len(page) != self.PAGE_SIZE:
-            raise ValueError(f"Page is len {len(page)} - should be {PAGE_SIZE}")
+            raise ValueError(f"Page is len {len(page)} - should be {self.PAGE_SIZE}")
         return page
 
     def _extract_hdr(self):
@@ -319,9 +315,9 @@ class NDImage:
 
         if idx:
             pg_idx = self.get_page(ptr)
-            # imd_common.hexdump_data(pg_idx)
+            # hexdump_data(pg_idx)
             # print(pg_idx)
-            # Theres up to 8 * 32 = 256 files per user on a disk
+            # There is up to 8 * 32 = 256 files per user on a disk
             # http://heim.bitraf.no/tingo/files/nd/ND-60.122.02_NORD_File_System_-_System_Documentation_January_1980_ocr.pdf
             # page 21
             # NB: this assumes there is only one user!
@@ -395,7 +391,7 @@ class NDImage:
         for pno in range(n_pages):
             page = self.get_page(pno)
             print(f"--- {self.fname} page {pno:3} {pno:#3x}")
-            imd_common.hexdump_data(page)
+            hexdump_data(page)
 
 
 def main():

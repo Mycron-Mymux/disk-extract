@@ -7,6 +7,7 @@ Documents are (mostly) in 7 bit ascii, but bit 8 is used to encode underlined ch
 
 from rich.console import Console
 import argparse
+import pathlib
 
 USE_RICH=False
 USE_RICH=True
@@ -43,9 +44,8 @@ ap.add_argument("fname", nargs='?')
 args = ap.parse_args()
 
 fname = args.fname
-with open(fname, 'rb') as f:
-    data = f.read()
-    lines = data.split(b"\n")
+data = pathlib.Path(fname).read_bytes()
+lines = data.split(b"\n")
     
 for line in lines:
     print(richify_tram_string(line))
