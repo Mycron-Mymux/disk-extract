@@ -60,8 +60,8 @@ def check_for_errors(im):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("-hex",   action="store_true")
-    ap.add_argument("-toraw", nargs=1)
-    ap.add_argument("-toimd", nargs=1)
+    ap.add_argument("-toraw", metavar="RAWFILE")
+    ap.add_argument("-toimd", metavar="IMDFILE")
     ap.add_argument("fname",  default="nd01.imd")
     ap.add_argument("-ds",    action="store_true", help="Process as double sided")
     ap.add_argument("-hdr",   action="store_true", help="Print IMD header")
@@ -77,9 +77,9 @@ if __name__ == "__main__":
         dump_tracks(d, dump_hex=args.hex, ss=not args.ds)
     else:
         if args.toraw is not None:
-            store_tracks(d, args.toraw[0], ss=not args.ds)
+            store_tracks(d, args.toraw, ss=not args.ds)
         if args.toimd is not None:
-            store_imd(d, args.toimd[0], ss=not args.ds)
+            store_imd(d, args.toimd, ss=not args.ds)
         if args.hdr:
             print("HDR from", args.fname)
             print(d.version)

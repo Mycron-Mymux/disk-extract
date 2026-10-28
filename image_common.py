@@ -15,7 +15,7 @@ SECTOR_SIZE = 128
 
 def split_disk(data, tracks=TRACKS, sectors=SECTORS, sector_size=SECTOR_SIZE):
     """splits a disk into tracks and sectors
-    returns a (track,sector) list
+    returns a dict with (track,sector): sector_data.
     """
     expected_size = tracks * sectors * sector_size
     if len(data) != expected_size:
@@ -26,7 +26,7 @@ def split_disk(data, tracks=TRACKS, sectors=SECTORS, sector_size=SECTOR_SIZE):
         track, sector = divmod(index, sectors)
         offset = index * sector_size
         d = data[offset:offset + sector_size]
-        assert len(d) == sector_size
+        assert len(d) == sector_size, f"Sector #{index} ({track}.{sector+1}) has incorrect size: {len(d)}"
         disk[(track, sector + 1)] = d
     return disk
 
@@ -48,8 +48,7 @@ def sector_address(index, sectors_per_track=SECTORS):
 
 
 def add_sects(track, sector, count, sectors_per_track=SECTORS):
-    """add sectors to address starting at track and sect, returning track,sect or
-    result"""
+    """add sectors to address starting at track and sect, returning new track,sect"""
     return sector_address(sector_index(track, sector, sectors_per_track) + count,
                           sectors_per_track)
 
@@ -69,10 +68,14 @@ class File:
         self.path = path
         self.data = data
         assert isinstance(self.data, (bytes, bytearray))
+    def safe_fn(self):
+        """When extracting the file, it might need to be rewritten slightly"""
+        return self.path
 
 
 def ensure_dir(path):
-    """Ensure that directory of path exists"""
+    """Ensure that directory of path exists. Prints a warning if it has to
+    create a directory (likely caused by a / character in the filename)"""
     path = pathlib.Path(path)
     if not path.parent.exists():
         print(f"WARNING: creating subdir {path.parent} for {path}")
@@ -156,7 +159,7 @@ class Archive:
         print("Storing in zip file:", fname)
         with zipfile.ZipFile(fname, 'w') as zfile:
             for file in self.files.values():
-                print(" - ", file.path)
+                print(" - ", file.safe_fn())
                 # writestr also handles bytes.
                 zfile.writestr(file.path, file.data)
 
@@ -168,23 +171,15 @@ class Archive:
 
         print("Extracting to directory:", dpath)
         for file in self.files.values():
-            fn = dpath / file.path
+            fn = dpath / file.safe_fn()
             ensure_dir(fn)
             print("  - ", fn)
             pathlib.Path(fn).write_bytes(file.data)
 
 
-if __name__ == "__main__":
+def simple_test():
+    # figuring-out-testing, not proper testing
     import sys
-
-    print("Verifying func equiv")
-    for track in range(TRACKS):
-        for sect in range(1, SECTORS+1):
-            for i in range(100):
-                v1 = add_sects(track, sect, i, ver=1)
-                v2 = add_sects(track, sect, i, ver=0)
-                assert v1 == v2, f"{v1=} {v2=}"
-
     for fname in sys.argv[1:]:
         try:
             img = DiskImage.from_file(fname)
@@ -196,3 +191,6 @@ if __name__ == "__main__":
             for track in range(TRACKS):
                 for sector in range(1, SECTORS +1):
                     img.read_sector(track, sector)
+
+if __name__ == "__main__":
+    test()

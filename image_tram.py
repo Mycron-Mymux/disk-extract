@@ -4,6 +4,7 @@ import argparse
 import imd
 import imd_common
 from image_common import Archive, File
+import utils
 
 
 class TramDisk:
@@ -97,14 +98,8 @@ class TramDisk:
             if lno >= 0xe5:
                 # print(f"Skipping eot {lno:#02x}", chunk)
                 continue
-            if lno in lines:
-                if 0:
-                    print("Skipping duplicate line", lno)
-                    print("   - ", lines[lno])
-                    print("     ", chunk)
-                continue
-            lines[lno] = chunk
-        return [(lno, lines[lno]) for lno in sorted(lines.keys())]
+            lines.setdefault(lno, chunk)
+        return sorted(lines.items())
 
     def doc_get_track_numbers(self, doc_no):
         """The header has a region of 76 bytes indicating which document number
@@ -156,11 +151,11 @@ def tram_raw_dump_documents(fname):
             for rno, (lno, txt) in enumerate(tdisk.doc_chunks(track_no)):
                 print(f"  -- {rno:3} {lno=:3} {txt}")
                 if 0xe5 in txt or 0xff in txt:
-                    imd_common.hexdump_data(txt)
+                    utils.hexdump_data(txt)
             sec = tdisk.get_sector_data(track_no, 26)
             remainder = sec[-10:]
             print("   -- remaining bytes of track", remainder)
-            imd_common.hexdump_data(remainder)
+            utils.hexdump_data(remainder)
 
 
 

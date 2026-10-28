@@ -120,8 +120,8 @@ class Entry:
             end = start
         return self.data[start*2:(end+1)*2]
 
-class ObjectEntry(Entry):
 
+class ObjectEntry(Entry):
     # http://heim.bitraf.no/tingo/files/nd/ND-60.052.04_NORD_File_System_April_1977_ocr.pdf
     # page 39
     # NB: offsets in the documentation are in octal form!

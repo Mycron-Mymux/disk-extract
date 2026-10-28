@@ -10,10 +10,23 @@ TODO:
   When extracting to directories directly, the files get the backspace added.
 
 """
+from logging import _nameToLevel
+import pathlib
+from site import check_enableusersite
 import struct
 import json
 from image_common import split_disk, split_sect, add_sects, extract_ascii
 from image_common import File, Archive, TRACKS, SECTORS, SECTOR_SIZE
+
+
+class MycronFile(File):
+    def safe_fn(self):
+        # Some of the mycron diskettes have weird names that appear to come from typos
+        # These make it harder to investigate the binaries
+        name = self.path
+        for ch in ["/", "$", ":", "&", '"', '\177']:
+            name = name.replace(ch, "_")
+        return name
 
 
 # program entry, 16 bytes
@@ -78,16 +91,15 @@ class ProgEntry:
         s = f"ProgEntry({self.name:8}, t/s0={self.track0:2}.{self.sec0:2}, "
         s += f"seg 1 at {self.seg1addr:#6x} sz {self.seg1sz:#6x} len {len(self.seg1):#6x}, "
         s += f"seg 2 at {self.seg2addr:#6x} sz {self.seg2sz:#6x} len {len(self.seg2):#6x}) "
-        # s += str(self.ebytes)
         return s
 
     def files(self):
-        yield File(f"{self.name}.meta", bytes(str(self) + "\n", encoding="ascii"))
-        yield File(f"{self.name}.meta.json", bytes(json.dumps(self.to_dict()) + "\n", encoding="ascii"))
+        yield MycronFile(f"{self.name}.meta", bytes(str(self) + "\n", encoding="ascii"))
+        yield MycronFile(f"{self.name}.meta.json", bytes(json.dumps(self.to_dict()) + "\n", encoding="ascii"))
         if len(self.seg1) > 0:
-            yield File(f"{self.name}.seg1.bin", self.seg1)
+            yield MycronFile(f"{self.name}.seg1.bin", self.seg1)
         if len(self.seg2) > 0:
-            yield File(f"{self.name}.seg2.bin", self.seg2)
+            yield MycronFile(f"{self.name}.seg2.bin", self.seg2)
 
 
 # positions starting with 1 (not 0) in the docs
@@ -172,7 +184,7 @@ class DataEntry:
             data = self.raw_file_to_eof()
         else:
             data = self.ascii_file().encode('ascii')
-        yield File(self.name, data)
+        yield MycronFile(self.name, data)
 
     def __str__(self):
         s = f"DataEntry({self.name:8}, len {len(self.raw_file_to_eof()):7}, start {self.start_track:02}.{self.start_sect:02})"
@@ -182,7 +194,7 @@ class DataEntry:
 class MycronDiskette:
     def __init__(self, fname):
         self.fname = fname
-        self.data = open(fname, 'rb').read()
+        self.data = pathlib.Path(fname).read_bytes()
         self.disk = split_disk(self.data)
         self._scan_volume_id()
         match self.disktype:
@@ -223,7 +235,6 @@ class MycronDiskette:
             if not DataEntry.verify_data_entry(sect):
                 continue
             entry = DataEntry(sect, self)
-            # print(entry)
             dl.append(entry)
         return dl
 
@@ -232,17 +243,14 @@ class MycronDiskette:
         for sno in range(8, SECTORS+1):
             sect = self.disk[(0, sno)]
             entries = split_sect(sect, 16)
-            # print(entries)
             for rpe in entries:
                 pe = ProgEntry(rpe, self)
                 if pe.valid:
-                    # print(pe)
                     pl.append(pe)
         return pl
 
     def get_metainf(self):
-        s = f"{self.fname}\n"
-        s += "\n".join([str(f) for f in self.files])
+        s = "\n".join([self.fname, *map(str, self.files)])
         if not s.endswith("\n"):
             s += "\n"
         return s
@@ -250,7 +258,7 @@ class MycronDiskette:
     def get_archive(self):
         # TODO: add a .meta file for the archive?
         archive = Archive(self.fname)
-        archive.add_file(File(".meta", self.get_metainf().encode("ascii")))
+        archive.add_file(MycronFile(".meta", self.get_metainf().encode("ascii")))
         for entry in self.files:
             for file in entry.files():
                 archive.add_file(file)
